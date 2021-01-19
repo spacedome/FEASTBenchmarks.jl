@@ -1,0 +1,9 @@
+name = "FEASTBenchmarks"
+uuid = "9692e8f0-15d4-4a81-b694-6f2b38112f6a"
+authors = ["spacedome <spacedome@users.noreply.github.com>"]
+version = "0.1.0"
+
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+FEASTSolver = "65ce2ba6-bba3-11e9-165b-677ad58e09bb"
+NonlinearEigenproblems = "067cfa3b-fa88-53b2-a873-5b23b3a16e31"
