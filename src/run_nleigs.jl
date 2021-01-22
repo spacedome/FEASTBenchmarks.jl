@@ -6,11 +6,12 @@ using Random
 using LinearAlgebra
 using SuiteSparse
 
+
 SuiteSparse.UMFPACK.umf_ctrl[8] = 0;
-LinearAlgebra.BLAS.set_num_threads(1)
+LinearAlgebra.BLAS.set_num_threads(6)
 
 function gun_init()
-    nep = gun_nep()
+    nep = nep_gallery("nlevp_native_gun")
 
     gam = 300^2 - 200^2
     mu = 250^2
@@ -34,36 +35,37 @@ function gun_init()
     Random.seed!(1)
     v = randn(size(nep, 1)) .+ 0im
 
-    funres = (λ, v) -> gun_residual(λ, v, nep.nep1.A..., nep.nep2.spmf.A...)
+    T(x) = compute_Mder(nep, x)
+    funres = (λ, v) -> norm(T(λ)*v)/norm(T(λ))
 
     return nep, Σ, Ξ, v, nodes, funres
 end
 
-function gun_nep()
-    nep = nep_gallery("nlevp_native_gun")
-    K, M = get_Av(nep.nep1);
-    W1, W2 = get_Av(nep.nep2);
-    c1 = LowRankMatrixAndFunction(W1, get_fv(nep.nep2)[1])
-    c2 = LowRankMatrixAndFunction(W2, get_fv(nep.nep2)[2])
-    return SumNEP(PEP([K, M]), LowRankFactorizedNEP([c1, c2]))
-end
+# function gun_nep()
+#     nep = nep_gallery("nlevp_native_gun")
+#     K, M = get_Av(nep.nep1);
+#     W1, W2 = get_Av(nep.nep2);
+#     c1 = LowRankMatrixAndFunction(W1, get_fv(nep.nep2)[1])
+#     c2 = LowRankMatrixAndFunction(W2, get_fv(nep.nep2)[2])
+#     return SumNEP(PEP([K, M]), LowRankFactorizedNEP([c1, c2]))
+# end
 
-function gun_residual(λ, v, K, M, W1, W2)
-    # constants
-    sigma1 = 0
-    sigma2 = 108.8774
+# function gun_residual(λ, v, K, M, W1, W2)
+#     # constants
+#     sigma1 = 0
+#     sigma2 = 108.8774
 
-    nK = 1.474544889815002e+05   # opnorm(K, 1)
-    nM = 2.726114618171165e-02   # opnorm(M, 1)
-    nW1 = 2.328612251920476e+00  # opnorm(W1, 1)
-    nW2 = 3.793375498194695e+00  # opnorm(W2, 1)
+#     nK = 1.474544889815002e+05   # opnorm(K, 1)
+#     nM = 2.726114618171165e-02   # opnorm(M, 1)
+#     nW1 = 2.328612251920476e+00  # opnorm(W1, 1)
+#     nW2 = 3.793375498194695e+00  # opnorm(W2, 1)
 
-    # Denominator
-    den = nK + abs(λ) * nM + sqrt(abs(λ-sigma1^2)) * nW1 + sqrt(abs(λ-sigma2^2)) * nW2
+#     # Denominator
+#     den = nK + abs(λ) * nM + sqrt(abs(λ-sigma1^2)) * nW1 + sqrt(abs(λ-sigma2^2)) * nW2
 
-    # 2-norm of A(lambda)*x
-    norm((K + M*λ + W1*im*sqrt(λ) + W2*im*sqrt(λ - sigma2^2)) * v) / den
-end
+#     # 2-norm of A(lambda)*x
+#     norm((K + M*λ + W1*im*sqrt(λ) + W2*im*sqrt(λ - sigma2^2)) * v) / den
+# end
 
 
 function info(Λ, X, residuals, c, r)
@@ -88,10 +90,11 @@ function info(Λ, X, residuals, c, r)
 end
 
 
-nep = nep_gallery("nlevp_native_gun")
-T(x) = compute_Mder(nep, x)
 
-n = size(nep, 1)
+# nep = nep_gallery("nlevp_native_gun")
+# T(x) = compute_Mder(nep, x)
+
+# n = size(nep, 1)
 C = complex(62500.0, 0.0)
 R = 50000
 
@@ -99,23 +102,21 @@ b_samples = 3
 
 suite = BenchmarkGroup()
 
-suite["nlfeast"] = BenchmarkGroup(["gun"])
 suite["nleigs"] = BenchmarkGroup(["gun"])
 
-for n_nodes = 6:6:24
-    suite["nlfeast"][string(n_nodes)] = @benchmarkable nlfeast!(T, rand(ComplexF64,n,32), $(n_nodes), 20, c=C, r=R, debug=false, ϵ=10e-10, store=true) samples=b_samples seconds=300 evals=1
-end
 
 suite["nleigs"]["static"] = @benchmarkable begin
     verbose = 0 #displaylevel
     nep, Σ, Ξ, v, nodes, funres = gun_init()
     lambda, X, res, solution_info = nleigs(nep, Σ, Ξ=Ξ, logger=verbose > 0 ? 1 : 0, minit=70, maxit=100, v=v, nodes=nodes, static=true, errmeasure=funres, return_details=verbose > 1)
+    # info(lambda, X, res, C, R)
 end samples=b_samples seconds=300 evals=1
 
 suite["nleigs"]["r2"] = @benchmarkable begin
     verbose = 0 #displaylevel
     nep, Σ, Ξ, v, nodes, funres = gun_init()
     lambda, X, res, solution_info = nleigs(nep, Σ, Ξ=Ξ, logger=verbose > 0 ? 1 : 0, minit=60, maxit=100, v=v, nodes=nodes, errmeasure=funres, return_details=verbose > 1)
+    # info(lambda, X, res, C, R)
 end samples=b_samples seconds=300 evals=1
 
 results = run(suite, verbose=true)

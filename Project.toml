@@ -5,5 +5,8 @@ version = "0.1.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+DistributedArrays = "aaf54ef3-cdf8-58ed-94cc-d582ad619b94"
 FEASTSolver = "65ce2ba6-bba3-11e9-165b-677ad58e09bb"
 NonlinearEigenproblems = "067cfa3b-fa88-53b2-a873-5b23b3a16e31"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
